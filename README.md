@@ -454,13 +454,6 @@ This is an educational project. Contributions and improvements welcome:
 ---
 ---
 
-## 📧 Contact & Support
-
-**DecodeLabs Cloud Computing Program**
-- Email: decodelabs.tech@gmail.com
-- Website: www.decodelabs.tech
-- Location: Greater Lucknow, India
-
 ---
 
 ## 🏆 Completion Status

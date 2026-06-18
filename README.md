@@ -802,27 +802,6 @@ See [SECURITY.md](./SECURITY.md) for detailed hardening strategies.
 
 ---
 
-## 🎓 What's Next? (Advanced Projects)
-
-After mastering the Server Commander, level up with:
-
-### Project 3: Multi-Tier Architecture
-- [ ] Load Balancer (AWS ELB/ALB)
-- [ ] Multiple EC2 instances
-- [ ] Auto-Scaling Groups
-- [ ] RDS Database integration
-
-### Project 4: Infrastructure as Code
-- [ ] Terraform templates
-- [ ] CloudFormation stacks
-- [ ] Automated deployments
-
-### Project 5: CI/CD Pipeline
-- [ ] GitHub Actions
-- [ ] Automated testing
-- [ ] Blue-green deployments
-
----
 
 ## 📝 Project Metadata
 

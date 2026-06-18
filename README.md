@@ -380,13 +380,6 @@ If you want to **recreate this project** yourself:
    ```
    http://<Your-EC2-Public-IP>
    ```
-
-✅ **Server is live!**
-
-For detailed step-by-step instructions, see [SETUP_GUIDE.md](./SETUP_GUIDE.md).
-
----
-
 ## 🔒 Security Best Practices Applied
 
 ✅ **SSH Key Encryption**

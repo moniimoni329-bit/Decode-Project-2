@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 2: The Server Commander — DecodeLabs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@300;400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0c10;
+      --surface:  #111420;
+      --border:   #1e2540;
+      --gold:     #f0a500;
+      --gold-dim: #7a5200;
+      --green:    #00e676;
+      --cyan:     #00bcd4;
+      --text:     #c8cfe0;
+      --muted:    #5a6480;
+      --white:    #eef0f8;
+      --red:      #ff5252;
+      --mono:     'Share Tech Mono', monospace;
+      --sans:     'Inter', sans-serif;
+      --display:  'Orbitron', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── SCANLINE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 3rem 2rem;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 40%, rgba(240,165,0,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(0,188,212,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(240,165,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,165,0,0.04) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border: 1px solid;
+      border-radius: 2px;
+    }
+    .badge-gold   { border-color: var(--gold);  color: var(--gold); }
+    .badge-green  { border-color: var(--green); color: var(--green); }
+    .badge-cyan   { border-color: var(--cyan);  color: var(--cyan); }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.3em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(2.2rem, 6vw, 4.2rem);
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1.1;
+      letter-spacing: 0.05em;
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 span { color: var(--gold); }
+
+    .hero-sub {
+      margin-top: 1.2rem;
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 520px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+      background: rgba(0,230,118,0.07);
+      border: 1px solid rgba(0,230,118,0.3);
+      border-radius: 999px;
+      padding: 0.5rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--green);
+      position: relative;
+      z-index: 1;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,230,118,0.5); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-family: var(--display);
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.04em;
+      margin-bottom: 2.5rem;
+    }
+
+    h3 {
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      margin-bottom: 0.7rem;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── SCENARIO CARD ── */
+    .scenario-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 4px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .scenario-card p { color: var(--text); }
+
+    /* ── MISSION LIST ── */
+    .mission-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+    .mission-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.9rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem 1.2rem;
+      font-size: 0.9rem;
+    }
+    .mission-list li .icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    /* ── PHASE TIMELINE ── */
+    .phases {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+    }
+    .phases::before {
+      content: '';
+      position: absolute;
+      left: 28px;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, var(--gold), var(--gold-dim), transparent);
+    }
+
+    .phase {
+      display: flex;
+      gap: 1.5rem;
+      padding-bottom: 2.5rem;
+      position: relative;
+    }
+    .phase:last-child { padding-bottom: 0; }
+
+    .phase-num {
+      width: 56px; height: 56px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border: 2px solid var(--gold);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--display);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--gold);
+      position: relative;
+      z-index: 1;
+    }
+
+    .phase-body {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem 1.4rem;
+    }
+
+    .phase-title {
+      font-family: var(--display);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .phase-desc {
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-bottom: 0.8rem;
+    }
+
+    /* ── CODE BLOCK ── */
+    .code-block {
+      background: #060810;
+      border: 1px solid #1a2035;
+      border-radius: 3px;
+      padding: 0.9rem 1.1rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: #a8d8a8;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.6;
+    }
+
+    .code-block .cmd  { color: #f0a500; }
+    .code-block .arg  { color: #80cbc4; }
+    .code-block .cmnt { color: #3d4f6e; }
+
+    /* ── TWO-COL ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.4rem;
+    }
+    .info-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+    }
+    .info-card ul li::before {
+      content: '→ ';
+      color: var(--gold);
+      font-family: var(--mono);
+    }
+
+    /* ── SECURITY TABLE ── */
+    .sec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      font-family: var(--mono);
+    }
+    .sec-table th {
+      background: #0d1018;
+      color: var(--gold);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 0.7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-table td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .sec-table tr:hover td { background: rgba(240,165,0,0.03); }
+    .tag-open     { color: var(--green); }
+    .tag-restrict { color: #ff9800; }
+
+    /* ── SUCCESS BANNER ── */
+    .success-banner {
+      background: rgba(0,230,118,0.05);
+      border: 1px solid rgba(0,230,118,0.25);
+      border-radius: 4px;
+      padding: 2.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .success-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,230,118,0.06), transparent);
+      pointer-events: none;
+    }
+    .success-banner .terminal-window {
+      background: #060810;
+      border: 1px solid #1a2035;
+      border-radius: 4px;
+      padding: 1.5rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--green);
+      text-align: left;
+      margin: 1.5rem auto;
+      max-width: 560px;
+      line-height: 1.8;
+    }
+    .terminal-window .prompt { color: var(--gold); }
+    .terminal-window .url   { color: var(--cyan); text-decoration: underline; }
+    .success-big {
+      font-family: var(--display);
+      font-size: clamp(1.3rem, 3vw, 2rem);
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: 0.06em;
+      margin-top: 1rem;
+    }
+
+    /* ── CHECKLIST ── */
+    .checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem 1.2rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--white);
+    }
+    .check-icon {
+      width: 28px; height: 28px;
+      background: rgba(0,230,118,0.1);
+      border: 1px solid rgba(0,230,118,0.3);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    /* ── CONCEPTS ── */
+    .concepts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .concept-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--gold-dim);
+      border-radius: 4px;
+      padding: 1.2rem;
+    }
+    .concept-card .c-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+    .concept-card p { font-size: 0.83rem; color: var(--muted); }
+
+    /* ── GITHUB LINKS SECTION ── */
+    .github-section {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      background: rgba(240,165,0,0.03);
+      border-radius: 4px;
+      padding: 1.5rem;
+    }
+
+    .github-section .section-title {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .github-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .github-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1rem;
+      background: rgba(240,165,0,0.08);
+      border: 1px solid rgba(240,165,0,0.3);
+      border-radius: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      font-family: var(--mono);
+    }
+
+    .github-links a:hover {
+      background: rgba(240,165,0,0.15);
+      border-color: var(--gold);
+      color: var(--white);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+    footer span { color: var(--gold); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .phases::before { left: 24px; }
+      .phase-num { width: 48px; height: 48px; font-size: 0.75rem; }
+      .github-links { flex-direction: column; }
+      .github-links a { width: 100%; justify-content: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .dot { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="grid-bg"></div>
+
+  <div class="badge-row">
+    <span class="badge badge-gold">DecodeLabs Internship</span>
+    <span class="badge badge-cyan">Cloud Computing · Week 2</span>
+    <span class="badge badge-green">Batch 2026</span>
+  </div>
+
+  <p class="eyebrow">Project 2 &mdash; Mission Report</p>
+
+  <h1>THE SERVER<br /><span>COMMANDER</span></h1>
+
+  <p class="hero-sub">Provisioning, securing, and commanding a live cloud server on AWS EC2 — from zero to a running web service.</p>
+
+  <div class="status-pill">
+    <div class="dot"></div>
+    EC2 INSTANCE &mdash; STATUS: ONLINE
+  </div>
+</header>
+
+<!-- ── SCENARIO ── -->
+<section>
+  <p class="section-label">Mission Brief</p>
+  <h2>THE SCENARIO</h2>
+
+  <div class="scenario-card">
+    <h3>Context</h3>
+    <p>A startup is launching a new dynamic application and needs a dedicated server environment with full control over the Operating System to install custom software and security patches. As the assigned Cloud Infrastructure Engineer at DecodeLabs, the task is to provision, secure, and deploy a live web server entirely from scratch using cloud-native IaaS tools.</p>
+  </div>
+
+  <ul class="mission-list">
+    <li><span class="icon">🖥️</span><span>Launch a Virtual Machine (EC2) running <strong>Amazon Linux 2023</strong> on AWS.</span></li>
+    <li><span class="icon">🔐</span><span>Connect to the server securely via <strong>SSH key-pair authentication</strong> (.pem file).</span></li>
+    <li><span class="icon">🌐</span><span>Install and configure <strong>Nginx</strong> web server through the Linux command line.</span></li>
+    <li><span class="icon">📄</span><span>Deploy a custom <strong>"Welcome to DecodeLabs"</strong> HTML page publicly accessible via the server's IP.</span></li>
+  </ul>
+</section>
+
+<hr class="divider" />
+
+<!-- ── PHASES ── -->
+<section>
+  <p class="section-label">Execution Log</p>
+  <h2>THE 6 PHASES</h2>
+
+  <div class="phases">
+
+    <!-- Phase 1 -->
+    <div class="phase">
+      <div class="phase-num">01</div>
+      <div class="phase-body">
+        <div class="phase-title">PROVISIONING THE INSTANCE</div>
+        <p class="phase-desc">Logged into the <strong>AWS Management Console</strong> → EC2 Dashboard → Launch Instance. Configured the following parameters:</p>
+        <div class="two-col" style="margin-top:0.8rem;">
+          <div class="info-card">
+            <h3>Instance Config</h3>
+            <ul>
+              <li>Name: Server-Commander-01</li>
+              <li>AMI: Amazon Linux 2023</li>
+              <li>Type: t2.micro (Free Tier)</li>
+              <li>Key Pair: Created &amp; Downloaded .pem</li>
+            </ul>
+          </div>
+          <div class="info-card">
+            <h3>Why These Choices</h3>
+            <ul>
+              <li>Amazon Linux 2023 = AWS-optimized</li>
+              <li>t2.micro = Free Tier eligible</li>
+              <li>.pem key = secure SSH access</li>
+              <li>IaaS model = full OS control</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div class="phase">
+      <div class="phase-num">02</div>
+      <div class="phase-body">
+        <div class="phase-title">SECURING THE PERIMETER — SECURITY GROUPS</div>
+        <p class="phase-desc">Configured inbound firewall rules. Security Groups act as "allow-only" virtual firewalls — all traffic is denied by default.</p>
+        <table class="sec-table">
+          <thead>
+            <tr><th>Type</th><th>Port</th><th>Source</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SSH</td><td>22</td><td>My IP Only</td>
+              <td class="tag-restrict">🔒 RESTRICTED</td>
+            </tr>
+            <tr>
+              <td>HTTP</td><td>80</td><td>Anywhere (0.0.0.0/0)</td>
+              <td class="tag-open">🌐 OPEN</td>
+            </tr>
+            <tr>
+              <td>HTTPS</td><td>443</td><td>Anywhere (0.0.0.0/0)</td>
+              <td class="tag-open">🌐 OPEN</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div class="phase">
+      <div class="phase-num">03</div>
+      <div class="phase-body">
+        <div class="phase-title">THE HANDSHAKE — SSH CONNECTION</div>
+        <p class="phase-desc">Secured the private key and established an SSH session from the local terminal to the EC2 instance.</p>
+        <div class="code-block"><span class="cmnt"># Step 1: Lock down the key file (mandatory on Mac/Linux)</span>
+<span class="cmd">chmod</span> <span class="arg">400</span> keyname.pem
+
+<span class="cmnt"># Step 2: Connect to the EC2 instance via SSH</span>
+<span class="cmd">ssh</span> <span class="arg">-i</span> keyname.pem ec2-user@&lt;Public-IPv4&gt;
+
+<span class="cmnt"># Output: Access Granted ✓</span>
+[ec2-user@ip-172-31-0-1 ~]$</div>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div class="phase">
+      <div class="phase-num">04</div>
+      <div class="phase-body">
+        <div class="phase-title">DEPLOYING THE PAYLOAD — NGINX INSTALLATION</div>
+        <p class="phase-desc">Nginx was selected over Apache for its event-driven, high-concurrency architecture. Three commands to bring the server online:</p>
+        <div class="code-block"><span class="cmnt"># Refresh system package repository</span>
+<span class="cmd">sudo dnf update</span> <span class="arg">-y</span>
+
+<span class="cmnt"># Install Nginx web server daemon</span>
+<span class="cmd">sudo dnf install nginx</span> <span class="arg">-y</span>
+
+<span class="cmnt"># Start and enable Nginx service</span>
+<span class="cmd">sudo systemctl start nginx</span>
+<span class="cmd">sudo systemctl enable nginx</span>
+
+<span class="cmnt"># Verify Nginx is running</span>
+<span class="cmd">sudo systemctl status nginx</span>
+<span class="cmnt">● nginx.service - Active: active (running) ✓</span></div>
+      </div>
+    </div>
+
+    <!-- Phase 5 -->
+    <div class="phase">
+      <div class="phase-num">05</div>
+      <div class="phase-body">
+        <div class="phase-title">CUSTOMIZING THE ASSET — HTML PAGE DEPLOYMENT</div>
+        <p class="phase-desc">Edited the Nginx default index file using the <code style="color:var(--cyan); font-family:var(--mono);">nano</code> terminal editor to deploy the custom DecodeLabs welcome page.</p>
+        <div class="code-block"><span class="cmnt"># Open the web root index file for editing</span>
+<span class="cmd">sudo nano</span> /usr/share/nginx/html/index.html
+
+<span class="cmnt"># Custom HTML content deployed:</span>
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;DecodeLabs | Server Commander&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Welcome to DecodeLabs: Mission Accomplished&lt;/h1&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+
+<span class="cmnt"># Save: Ctrl+O → Enter   Exit: Ctrl+X</span></div>
+      </div>
+    </div>
+
+    <!-- Phase 6 -->
+    <div class="phase">
+      <div class="phase-num">06</div>
+      <div class="phase-body">
+        <div class="phase-title">VERIFICATION — SERVER IS LIVE</div>
+        <p class="phase-desc">Opened a browser and navigated to the EC2 instance's public IP. The DecodeLabs page loaded successfully — server confirmed online.</p>
+        <div class="success-banner" style="margin-top:0.8rem;">
+          <div class="terminal-window">
+<span class="prompt">Browser URL:</span>  <span class="url">http://&lt;EC2-Public-IP&gt;</span>
+
+<span style="color:#00e676;">● ONLINE</span>
+
+Welcome to DecodeLabs: Mission Accomplished
+          </div>
+          <div class="success-big">✓ DEPLOYMENT SUCCESSFUL</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /phases -->
+</section>
+
+<hr class="divider" />
+
+<!-- ── CONCEPTS ── -->
+<section>
+  <p class="section-label">What Was Learned</p>
+  <h2>KEY CONCEPTS MASTERED</h2>
+
+  <div class="concepts">
+    <div class="concept-card">
+      <div class="c-label">IaaS Model</div>
+      <p>AWS provides the physical hardware. The engineer owns the OS, software stack, and security configuration.</p>
+    </div>
+    <div class="concept-card">
+      <div class="c-label">Hypervisor Logic</div>
+      <p>The AWS Nitro System partitions physical hardware into isolated Virtual Machines, maximizing workload resources.</p>
+    </div>
+    <div class="concept-card">
+      <div class="c-label">SSH Key Auth</div>
+      <p>Public key stored on the server; private key (.pem) stored locally and never shared. Lose the key, lose the server.</p>
+    </div>
+    <div class="concept-card">
+      <div class="c-label">Security Groups</div>
+      <p>Stateful allow-only firewalls. SSH restricted to one IP; web ports open to the world. Default: deny all.</p>
+    </div>
+    <div class="concept-card">
+      <div class="c-label">Nginx vs Apache</div>
+      <p>Nginx: event-driven, high-concurrency, low memory. Apache: process-driven, flexible. Nginx selected for this mission.</p>
+    </div>
+    <div class="concept-card">
+      <div class="c-label">Pets vs Cattle</div>
+      <p>Old way: nurse servers to health (pets). Cloud way: terminate and replace identical instances (cattle).</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── DEBRIEF ── -->
+<section>
+  <p class="section-label">Mission Debrief</p>
+  <h2>STATUS: COMPLETED</h2>
+
+  <div class="checklist">
+    <div class="check-item"><div class="check-icon">✓</div>Virtualization Logic (EC2)</div>
+    <div class="check-item"><div class="check-icon">✓</div>Security Groups &amp; Firewalls</div>
+    <div class="check-item"><div class="check-icon">✓</div>Key-Based Authentication</div>
+    <div class="check-item"><div class="check-icon">✓</div>SSH Remote Management</div>
+    <div class="check-item"><div class="check-icon">✓</div>Web Server Deployment</div>
+    <div class="check-item"><div class="check-icon">✓</div>Live HTML Page Hosted</div>
+  </div>
+
+  <div style="margin-top:2.5rem; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:4px; padding:1.5rem 2rem;">
+    <p style="font-size:0.9rem; color:var(--text);">The best way to master Cloud Computing is through hands-on practice. Every "Connection Timed Out" error is a learning opportunity. By completing this milestone at DecodeLabs, a real-world IaaS portfolio entry has been created — the foundation of a professional cloud architecture career.</p>
+    <p style="margin-top:1rem; font-family:var(--display); font-size:0.8rem; color:var(--gold); letter-spacing:0.1em;">YOU ARE NOW A SERVER COMMANDER.</p>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <p><span>DECODELABS</span> &nbsp;·&nbsp; Cloud Computing Internship &nbsp;·&nbsp; Batch 2026 &nbsp;·&nbsp; Week 2 &nbsp;·&nbsp; Project 2</p>
+  <p style="margin-top:0.4rem;">decodelabs.tech@gmail.com &nbsp;·&nbsp; www.decodelabs.tech &nbsp;·&nbsp; Greater Lucknow, India</p>
+  <p style="margin-top:0.4rem; color:#2a3050;">TACTICAL BLUEPRINT · VER 2.1.5 · MISSION CRITICAL</p>
+
+  <!-- GitHub Links Section -->
+  <div class="github-section">
+    <div class="section-title">📚 Full Documentation</div>
+    <div class="github-links">
+      <a href="https://github.com/YOUR_USERNAME/server-commander" target="_blank" rel="noopener noreferrer">
+        🔗 View on GitHub
+      </a>
+      <a href="README.md">
+        📖 README
+      </a>
+      <a href="SETUP_GUIDE.md">
+        🛠️ Setup Guide
+      </a>
+      <a href="ARCHITECTURE.md">
+        🏗️ Architecture
+      </a>
+      <a href="SECURITY.md">
+        🔐 Security Guide
+      </a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

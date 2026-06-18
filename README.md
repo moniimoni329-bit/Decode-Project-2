@@ -452,13 +452,6 @@ This is an educational project. Contributions and improvements welcome:
 5. Open a Pull Request
 
 ---
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
-
-Free to use for educational and commercial purposes.
-
 ---
 
 ## 📧 Contact & Support
